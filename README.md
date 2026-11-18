@@ -1,0 +1,72 @@
+# Eleição Eletrônica — Back-End (FastAPI)
+
+API do Sistema de Simulação de Eleição Eletrônica. Python 3.11+, FastAPI, SQLAlchemy 2, SQLite, JWT.
+
+## Executar
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+python -m scripts.popular_demo      # dados de demonstração, caso deseje
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+- Swagger UI: http://localhost:8000/docs  (ReDoc em `/redoc`)
+- Chefe da Seção criado automaticamente: **admin / admin123** (mude com `CHEFE_LOGIN`, `CHEFE_SENHA`).
+- Para o app no celular, rode com `--host 0.0.0.0` e use o IP do computador (ex.: `http://192.168.0.10:8000`); libere a porta 8000 no firewall.
+- Em Swagger: faça `POST /auth/login`, copie `access_token`, clique em **Authorize**.
+
+Variáveis de ambiente: `DATABASE_URL` (padrão `sqlite:///./eleicao.db`), `SECRET_KEY`, `TOKEN_EXPIRE_MINUTES`.
+
+## Testes
+
+```bash
+pytest           # 43 testes: unitários (tests/unit) e de integração (tests/integration)
+```
+
+## Estrutura modular
+
+```
+app/
+├── main.py        app, CORS, tratamento de erros, routers
+├── config.py      configuração por variáveis de ambiente
+├── database.py    engine/sessão SQLAlchemy
+├── models.py      tabelas: usuarios, eleicoes, candidatos, comparecimentos, votos
+├── schemas.py     contratos de entrada/saída (Pydantic → Swagger)
+├── security.py    hash PBKDF2 e JWT
+├── deps.py        usuário autenticado + controle por perfil (403)
+├── exceptions.py  erros de negócio (401/403/404/409/422)
+├── routers/       camada HTTP (auth, eleicoes, eleitores, candidatos, votacao, apuracao)
+└── services/      regras de negócio (sem HTTP): usuarios, eleicoes, candidatos, votacao, apuracao
+tests/ unit/ + integration/      scripts/popular_demo.py
+```
+
+## Endpoints por perfil
+
+| Perfil | Pode |
+|---|---|
+| público | `POST /auth/login` |
+| qualquer logado | `GET /auth/me`, `GET /eleicoes`, `/eleicoes/atual`, `/eleicoes/{id}`, `GET /candidatos` |
+| **CHEFE** | `POST/PUT /eleicoes`, `POST /eleicoes/{id}/abrir`, `/encerrar`; CRUD `/eleitores`; `POST/PUT/DELETE /candidatos`; apuração/resultado de todos os cargos |
+| **ELEITOR** | `GET /eleicoes/{id}/cargos`, `GET /eleicoes/{id}/meus-votos`, `POST /eleicoes/{id}/votos`; apuração/resultado de todos os cargos |
+| **CANDIDATO** | `GET /eleicoes/{id}/apuracao` e `/resultado` **só do próprio cargo** |
+
+Apuração: `GET /eleicoes/{id}/apuracao` (parcial, em tempo real; 409 se AGENDADA). Resultado final: `GET /eleicoes/{id}/resultado` (409 até encerrar; traz o mais votado de cada cargo, `empate: true` quando há empate no topo).
+
+## Regras de negócio implementadas
+
+- Eleição: `AGENDADA → ABERTA → ENCERRADA`, só o Chefe muda; turno 1 ou 2; encerramento depois da abertura; não abre sem candidatos.
+- Voto só com eleição **ABERTA**, só **ELEITOR**, **um por cargo** (restrição UNIQUE no banco), exige `confirmado: true` e não pode ser alterado (não existe rota de edição/exclusão de voto).
+- Candidatos só são criados/alterados/excluídos enquanto a eleição está AGENDADA; número único por cargo+eleição.
+- Chefe cadastra eleitores e candidatos (candidato = usuário com cargo, partido, número e eleição).
+
+## Sigilo do voto
+
+`comparecimentos` guarda *que* o eleitor votou no cargo X (barra duplicidade); `votos` guarda eleição + candidato + cargo, com **UUID aleatório e sem eleitor nem horário**. Nenhuma tabela liga eleitor a candidato e nenhum endpoint revela em quem alguém votou (`meus-votos` só lista cargos).
+
+## Erros
+
+Formato `{"detail": "mensagem"}`: 401 credencial/token inválido, 403 perfil sem permissão, 404 não encontrado, 409 conflito (eleição não aberta, voto duplicado, login/número repetido), 422 dados inválidos.
+
