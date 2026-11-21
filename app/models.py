@@ -73,9 +73,17 @@ class Comparecimento(Base):
 
 
 class Voto(Base):
-    """Voto anônimo: apenas eleição, candidato e cargo."""
+    """Voto anônimo: apenas eleição, candidato e cargo.
+
+    A tabela é criada como WITHOUT ROWID no SQLite. Numa tabela comum, o SQLite guarda um
+    `rowid` crescente, que registra a ORDEM em que os votos foram inseridos. Cruzando essa ordem
+    com a de `comparecimentos` (que tem id sequencial e horário), daria para descobrir em quem cada
+    eleitor votou. Sem rowid, as linhas ficam ordenadas só pela chave (UUID aleatório), e a ordem
+    de chegada dos votos não fica guardada.
+    """
 
     __tablename__ = "votos"
+    __table_args__ = {"sqlite_with_rowid": False}
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
     eleicao_id: Mapped[int] = mapped_column(ForeignKey("eleicoes.id"), index=True)

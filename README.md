@@ -23,8 +23,10 @@ Variáveis de ambiente: `DATABASE_URL` (padrão `sqlite:///./eleicao.db`), `SECR
 ## Testes
 
 ```bash
-pytest           # 43 testes: unitários (tests/unit) e de integração (tests/integration)
+pytest           # 48 testes: unitários (tests/unit) e de integração (tests/integration)
 ```
+
+> `app/security.py` e `app/exceptions.py` estão em implementação (veja [docs/TAREFA_security_exceptions.md](docs/TAREFA_security_exceptions.md)). Enquanto estiverem vazios, a API não sobe e o pytest falha no import.
 
 ## Estrutura modular
 
@@ -65,6 +67,10 @@ Apuração: `GET /eleicoes/{id}/apuracao` (parcial, em tempo real; 409 se AGENDA
 ## Sigilo do voto
 
 `comparecimentos` guarda *que* o eleitor votou no cargo X (barra duplicidade); `votos` guarda eleição + candidato + cargo, com **UUID aleatório e sem eleitor nem horário**. Nenhuma tabela liga eleitor a candidato e nenhum endpoint revela em quem alguém votou (`meus-votos` só lista cargos).
+
+A tabela `votos` é criada como **`WITHOUT ROWID`** no SQLite. Numa tabela comum, o `rowid` crescente guarda a ordem de inserção, e cruzar essa ordem com a de `comparecimentos` revelaria em quem cada eleitor votou. Sem rowid, os votos ficam ordenados só pelo UUID aleatório. Um banco `eleicao.db` criado antes dessa mudança precisa ser apagado e recriado, porque o `create_all` não altera tabelas que já existem.
+
+Testes que garantem o sigilo e o controle de acesso (48 no total): colunas de `votos` e `comparecimentos`, `votos` como WITHOUT ROWID (consulta ao `sqlite_master`), token adulterado/expirado → 401, ELEITOR e CANDIDATO fora das rotas do Chefe e da votação → 403, CANDIDATO só vê o próprio cargo na apuração e no resultado.
 
 ## Erros
 

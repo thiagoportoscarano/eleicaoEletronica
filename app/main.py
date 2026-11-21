@@ -1,9 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.exceptions import ErroNegocio
 from app.routers import apuracao, auth, candidatos, eleicoes, eleitores, votacao
@@ -12,6 +14,10 @@ from app.services.usuarios import garantir_chefe
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if settings.secret_key.startswith("dev-secret"):
+        logging.warning("SECRET_KEY está com o valor padrão de desenvolvimento. Defina SECRET_KEY antes de usar em produção.")
+    if settings.chefe_senha == "admin123":
+        logging.warning("CHEFE_SENHA está com o valor padrão 'admin123'. Defina CHEFE_SENHA antes de usar em produção.")
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         garantir_chefe(db)
