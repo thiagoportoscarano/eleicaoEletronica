@@ -1,4 +1,6 @@
 """Usuários: autenticação e CRUD de eleitores."""
+import secrets
+
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -26,9 +28,24 @@ def garantir_chefe(db: Session) -> None:
         db.commit()
 
 
+_hash_ficticio: str | None = None
+
+
+def _verificar_senha_ficticia(senha: str) -> None:
+    """Roda o PBKDF2 mesmo quando o login não existe, para o tempo de resposta não revelar
+    quais logins estão cadastrados."""
+    global _hash_ficticio
+    if _hash_ficticio is None:
+        _hash_ficticio = hash_senha(secrets.token_hex(16))
+    verificar_senha(senha, _hash_ficticio)
+
+
 def autenticar(db: Session, login: str, senha: str) -> Usuario:
     u = db.scalar(select(Usuario).where(Usuario.login == login))
-    if not u or not verificar_senha(senha, u.senha_hash):
+    if not u:
+        _verificar_senha_ficticia(senha)
+        raise NaoAutenticado("Login ou senha inválidos.")
+    if not verificar_senha(senha, u.senha_hash):
         raise NaoAutenticado("Login ou senha inválidos.")
     return u
 

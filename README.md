@@ -26,8 +26,6 @@ Variáveis de ambiente: `DATABASE_URL` (padrão `sqlite:///./eleicao.db`), `SECR
 pytest           # 48 testes: unitários (tests/unit) e de integração (tests/integration)
 ```
 
-> `app/security.py` e `app/exceptions.py` estão em implementação (veja [docs/TAREFA_security_exceptions.md](docs/TAREFA_security_exceptions.md)). Enquanto estiverem vazios, a API não sobe e o pytest falha no import.
-
 ## Estrutura modular
 
 ```
