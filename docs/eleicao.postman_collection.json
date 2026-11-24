@@ -1,0 +1,2537 @@
+{
+  "info": {
+    "name": "Eleição Eletrônica API — roteiro de demonstração",
+    "description": "Roteiro completo da apresentação, na ordem: login, eleição, eleitores, candidatos, perfis, votação, acompanhamento e resultado. Rode a coleção inteira (Run collection) com a API em {{baseUrl}}: cada passo confere o status esperado e guarda tokens e IDs nas variáveis da coleção. Os logins levam um sufixo gerado no primeiro passo, então a coleção pode ser rodada várias vezes no mesmo banco.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "sufixo",
+      "value": ""
+    },
+    {
+      "key": "tokenChefe",
+      "value": ""
+    },
+    {
+      "key": "tokenEleitor1",
+      "value": ""
+    },
+    {
+      "key": "tokenEleitor2",
+      "value": ""
+    },
+    {
+      "key": "tokenCandGov",
+      "value": ""
+    },
+    {
+      "key": "eleicaoId",
+      "value": ""
+    },
+    {
+      "key": "eleitor1Id",
+      "value": ""
+    },
+    {
+      "key": "eleitor2Id",
+      "value": ""
+    },
+    {
+      "key": "eleitorTempId",
+      "value": ""
+    },
+    {
+      "key": "candGov1Id",
+      "value": ""
+    },
+    {
+      "key": "candGov2Id",
+      "value": ""
+    },
+    {
+      "key": "candPresId",
+      "value": ""
+    },
+    {
+      "key": "candTempId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Infra",
+      "item": [
+        {
+          "name": "Saúde da API",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sufixo', String(Date.now()).slice(-6));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/saude",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "saude"
+              ]
+            },
+            "description": "Confere se a API está no ar. Gera o sufixo usado nos logins desta execução, para a coleção poder ser rodada várias vezes no mesmo banco.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Autenticação",
+      "item": [
+        {
+          "name": "Login do Chefe da Seção",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('tokenChefe', j.access_token);",
+                  "pm.test(\"perfil é CHEFE\", function () { pm.expect(j.perfil === 'CHEFE').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"admin\",\n  \"senha\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login com senha errada → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"admin\",\n  \"senha\": \"errada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Quem sou eu (/auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"perfil é CHEFE\", function () { pm.expect(j.perfil === 'CHEFE').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sem token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Eleição (Chefe)",
+      "item": [
+        {
+          "name": "Cadastrar eleição (data, turno, horários)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('eleicaoId', j.id);",
+                  "pm.test(\"nasce AGENDADA\", function () { pm.expect(j.situacao === 'AGENDADA').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Eleição Geral 2026 - demonstração\",\n  \"data\": \"2026-10-04\",\n  \"turno\": 1,\n  \"hora_abertura\": \"08:00\",\n  \"hora_encerramento\": \"17:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Encerramento antes da abertura → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', function () { pm.response.to.have.status(422); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": \"2026-10-04\",\n  \"turno\": 1,\n  \"hora_abertura\": \"17:00\",\n  \"hora_encerramento\": \"08:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Alterar eleição agendada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"título alterado\", function () { pm.expect(j.titulo === 'Eleição Geral 2026').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Eleição Geral 2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar situação da eleição",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"AGENDADA\", function () { pm.expect(j.situacao === 'AGENDADA').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Abrir sem candidatos → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/abrir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "abrir"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Eleitores (Chefe)",
+      "item": [
+        {
+          "name": "Cadastrar eleitor 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('eleitor1Id', j.id);",
+                  "pm.test(\"senha não aparece na resposta\", function () { pm.expect(j.senha === undefined).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Eleitor 1\",\n  \"login\": \"eleitor1_{{sufixo}}\",\n  \"senha\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cadastrar eleitor 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('eleitor2Id', j.id);",
+                  "pm.test(\"senha não aparece na resposta\", function () { pm.expect(j.senha === undefined).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Eleitor 2\",\n  \"login\": \"eleitor2_{{sufixo}}\",\n  \"senha\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login repetido → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Outro\",\n  \"login\": \"eleitor1_{{sufixo}}\",\n  \"senha\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar eleitores",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"lista não vazia\", function () { pm.expect(j.length >= 2).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar um eleitor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores/{{eleitor1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{eleitor1Id}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alterar dados do eleitor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"nome alterado\", function () { pm.expect(j.nome === 'Eleitor 2 (alterado)').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores/{{eleitor2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{eleitor2Id}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Eleitor 2 (alterado)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cadastrar eleitor temporário",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('eleitorTempId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Eleitor Temporário\",\n  \"login\": \"temp_{{sufixo}}\",\n  \"senha\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Excluir eleitor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores/{{eleitorTempId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{eleitorTempId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Candidatos (Chefe)",
+      "item": [
+        {
+          "name": "Cadastrar candidato: Ana Souza (GOVERNADOR)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('candGov1Id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Ana Souza\",\n  \"login\": \"ana_{{sufixo}}\",\n  \"senha\": \"1234\",\n  \"numero\": 11,\n  \"partido\": \"PAA\",\n  \"cargo\": \"GOVERNADOR\",\n  \"eleicao_id\": {{eleicaoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cadastrar candidato: Bruno Lima (GOVERNADOR)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('candGov2Id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Bruno Lima\",\n  \"login\": \"bruno_{{sufixo}}\",\n  \"senha\": \"1234\",\n  \"numero\": 22,\n  \"partido\": \"PBB\",\n  \"cargo\": \"GOVERNADOR\",\n  \"eleicao_id\": {{eleicaoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cadastrar candidato: Carla Dias (PRESIDENTE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('candPresId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Carla Dias\",\n  \"login\": \"carla_{{sufixo}}\",\n  \"senha\": \"1234\",\n  \"numero\": 33,\n  \"partido\": \"PCC\",\n  \"cargo\": \"PRESIDENTE\",\n  \"eleicao_id\": {{eleicaoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Número repetido no mesmo cargo → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Repetido\",\n  \"login\": \"rep_{{sufixo}}\",\n  \"senha\": \"1234\",\n  \"numero\": 11,\n  \"partido\": \"PXX\",\n  \"cargo\": \"GOVERNADOR\",\n  \"eleicao_id\": {{eleicaoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar candidatos da eleição",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"3 candidatos\", function () { pm.expect(j.length === 3).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos?eleicao_id={{eleicaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ],
+              "query": [
+                {
+                  "key": "eleicao_id",
+                  "value": "{{eleicaoId}}"
+                }
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar candidatos por cargo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"2 a governador\", function () { pm.expect(j.length === 2).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos?eleicao_id={{eleicaoId}}&cargo=GOVERNADOR",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ],
+              "query": [
+                {
+                  "key": "eleicao_id",
+                  "value": "{{eleicaoId}}"
+                },
+                {
+                  "key": "cargo",
+                  "value": "GOVERNADOR"
+                }
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Alterar candidato",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"partido alterado\", function () { pm.expect(j.partido === 'PBX').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos/{{candGov2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos",
+                "{{candGov2Id}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partido\": \"PBX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cadastrar candidato temporário",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('candTempId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Temporário\",\n  \"login\": \"tempcand_{{sufixo}}\",\n  \"senha\": \"1234\",\n  \"numero\": 99,\n  \"partido\": \"PTT\",\n  \"cargo\": \"SENADOR\",\n  \"eleicao_id\": {{eleicaoId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Excluir candidato",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/candidatos/{{candTempId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidatos",
+                "{{candTempId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Perfis",
+      "item": [
+        {
+          "name": "Login do eleitor 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('tokenEleitor1', j.access_token);",
+                  "pm.test(\"ELEITOR\", function () { pm.expect(j.perfil === 'ELEITOR').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"eleitor1_{{sufixo}}\",\n  \"senha\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login do eleitor 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('tokenEleitor2', j.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"eleitor2_{{sufixo}}\",\n  \"senha\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login da candidata a governadora",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.collectionVariables.set('tokenCandGov', j.access_token);",
+                  "pm.test(\"CANDIDATO\", function () { pm.expect(j.perfil === 'CANDIDATO').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"ana_{{sufixo}}\",\n  \"senha\": \"1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Eleitor na área do Chefe → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Candidato tenta abrir a eleição → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/abrir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "abrir"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCandGov}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Votação",
+      "item": [
+        {
+          "name": "Votar com eleição AGENDADA → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candGov1Id}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir a votação (Chefe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"ABERTA\", function () { pm.expect(j.situacao === 'ABERTA').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/abrir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "abrir"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Candidatos disponíveis por cargo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"2 cargos com candidatos\", function () { pm.expect(j.length === 2).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/cargos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "cargos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registrar sem confirmar → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', function () { pm.response.to.have.status(422); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "O voto só vale com confirmado=true. Sem a confirmação, nada é gravado.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candGov1Id}},\n  \"confirmado\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Eleitor 1 vota para governador (confirmado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candGov1Id}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Votar de novo no mesmo cargo → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "Um voto por cargo, e o voto confirmado não pode ser alterado.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candGov2Id}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Eleitor 1 vota para presidente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candPresId}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Em quais cargos já votei (sem revelar em quem)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"2 cargos votados\", function () { pm.expect(j.cargos_votados.length === 2).to.be.true; });",
+                  "pm.test(\"não revela candidato\", function () { pm.expect(JSON.stringify(j).indexOf('candidato') === -1).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/meus-votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "meus-votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eleitor 2 vota para governador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candGov1Id}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Chefe tenta votar → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candGov1Id}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Candidato tenta votar → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCandGov}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candGov1Id}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Excluir eleitor que já votou → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleitores/{{eleitor1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{eleitor1Id}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Acompanhamento",
+      "item": [
+        {
+          "name": "Eleitor acompanha todos os cargos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"2 cargos\", function () { pm.expect(j.cargos.length === 2).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/apuracao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "apuracao"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor1}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Candidato acompanha só o próprio cargo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"só GOVERNADOR\", function () { pm.expect(j.cargos.length === 1 && j.cargos[0].cargo === 'GOVERNADOR').to.be.true; });",
+                  "pm.test(\"Ana com 2 votos\", function () { pm.expect(j.cargos[0].candidatos[0].votos === 2).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/apuracao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "apuracao"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCandGov}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resultado antes de encerrar → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "resultado"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Encerramento e resultado",
+      "item": [
+        {
+          "name": "Encerrar a votação (Chefe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"ENCERRADA\", function () { pm.expect(j.situacao === 'ENCERRADA').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/encerrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "encerrar"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Votar depois de encerrar → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.response.to.have.status(409); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/votos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "votos"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEleitor2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": {{candPresId}},\n  \"confirmado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Resultado final (todos os cargos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"vencedora de governador é a Ana\", function () { pm.expect(j.cargos.find(c => c.cargo === 'GOVERNADOR').vencedor.nome === 'Ana Souza').to.be.true; });",
+                  "pm.test(\"governador teve 2 votos\", function () { pm.expect(j.cargos.find(c => c.cargo === 'GOVERNADOR').total_votos === 2).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "resultado"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenChefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resultado visto pela candidata (só o cargo dela)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var j = pm.response.code === 204 ? {} : pm.response.json();",
+                  "pm.test(\"só GOVERNADOR\", function () { pm.expect(j.cargos.length === 1 && j.cargos[0].cargo === 'GOVERNADOR').to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/eleicoes/{{eleicaoId}}/resultado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicaoId}}",
+                "resultado"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCandGov}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
