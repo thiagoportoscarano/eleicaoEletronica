@@ -1,7 +1,7 @@
 """Usuários: autenticação e CRUD de eleitores."""
 import secrets
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -90,7 +90,10 @@ def atualizar_eleitor(db: Session, eleitor_id: int, dados: EleitorUpdate) -> Usu
 
 
 def excluir_eleitor(db: Session, eleitor_id: int) -> None:
+    """Eleitor que já votou não pode ser excluído: apagar o comparecimento deixaria a eleição com
+    mais votos do que eleitores que votaram (o voto anônimo não pode ser localizado para sair junto)."""
     u = _eleitor_ou_404(db, eleitor_id)
-    db.execute(delete(Comparecimento).where(Comparecimento.eleitor_id == u.id))
+    if db.scalar(select(Comparecimento.id).where(Comparecimento.eleitor_id == u.id).limit(1)):
+        raise Conflito("Este eleitor já votou e não pode ser excluído: a contagem de votos ficaria inconsistente.")
     db.delete(u)
     db.commit()

@@ -67,6 +67,18 @@ def test_crud_eleitor(client, chefe):
     assert client.get(f"/eleitores/{eid}", headers=chefe).status_code == 404
 
 
+def test_eleitor_que_ja_votou_nao_pode_ser_excluido(client, chefe, cenario):
+    e = cenario["eleicao"]["id"]
+    abrir(client, chefe, e)
+    assert votar(client, auth(client, "eleitor1", "1234"), e, cenario["cands"]["g1"]["id"]).status_code == 201
+    ids = {x["login"]: x["id"] for x in client.get("/eleitores", headers=chefe).json()}
+    r = client.delete(f"/eleitores/{ids['eleitor1']}", headers=chefe)
+    assert r.status_code == 409 and "já votou" in r.json()["detail"]
+    assert client.delete(f"/eleitores/{ids['eleitor2']}", headers=chefe).status_code == 204  # quem não votou pode sair
+    gov = next(x for x in client.get(f"/eleicoes/{e}/apuracao", headers=chefe).json()["cargos"] if x["cargo"] == "GOVERNADOR")
+    assert gov["total_votos"] == 1  # o voto já computado continua na contagem
+
+
 def test_eleitor_atualiza_senha_e_loga_com_a_nova(client, chefe):
     eid = client.post("/eleitores", headers=chefe, json={"nome": "Zé", "login": "zeca", "senha": "antiga"}).json()["id"]
     client.put(f"/eleitores/{eid}", headers=chefe, json={"senha": "novinha"})
@@ -252,14 +264,3 @@ def test_empate_nao_declara_vencedor(client, chefe, cenario):
     client.post(f"/eleicoes/{e}/encerrar", headers=chefe)
     gov = next(x for x in client.get(f"/eleicoes/{e}/resultado", headers=chefe).json()["cargos"] if x["cargo"] == "GOVERNADOR")
     assert gov["empate"] is True and gov["vencedor"] is None
-
-
-def test_excluir_eleitor_nao_apaga_votos_ja_computados(client, chefe, cenario):
-    e, c = cenario["eleicao"]["id"], cenario["cands"]
-    abrir(client, chefe, e)
-    votar(client, auth(client, "eleitor1", "1234"), e, c["g1"]["id"])
-    eleitores = client.get("/eleitores", headers=chefe).json()
-    eid = next(x["id"] for x in eleitores if x["login"] == "eleitor1")
-    assert client.delete(f"/eleitores/{eid}", headers=chefe).status_code == 204
-    gov = next(x for x in client.get(f"/eleicoes/{e}/apuracao", headers=chefe).json()["cargos"] if x["cargo"] == "GOVERNADOR")
-    assert gov["total_votos"] == 1
