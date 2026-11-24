@@ -1,0 +1,2052 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Eleição Eletrônica API",
+    "description": "\nAPI do **Sistema de Simulação de Eleição Eletrônica**.\n\n**Como usar:** faça `POST /auth/login`, copie o `access_token` e clique em **Authorize** (cadeado).\n\nPerfis: **CHEFE** (administra a eleição, eleitores e candidatos), **ELEITOR** (vota e acompanha),\n**CANDIDATO** (acompanha apenas o próprio cargo).\n\nSigilo do voto: o sistema controla *quem já votou* em cada cargo, mas nunca *em quem* votou.\n",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Login de qualquer perfil",
+        "description": "Autentica Chefe da Seção, Eleitor ou Candidato. Retorna o JWT e o perfil, que define o que o usuário pode fazer.",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Dados do usuário autenticado",
+        "operationId": "me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/eleicoes": {
+      "post": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Cadastrar eleição (Chefe)",
+        "description": "Define data, turno e horários de abertura/encerramento. A eleição nasce AGENDADA.",
+        "operationId": "criar_eleicoes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EleicaoIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Listar eleições",
+        "operationId": "listar_eleicoes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "situacao",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Situacao"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Situacao"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EleicaoOut"
+                  },
+                  "title": "Response Listar Eleicoes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/atual": {
+      "get": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Eleição em destaque",
+        "description": "A eleição ABERTA; se não houver, a próxima AGENDADA; se não houver, a última ENCERRADA.",
+        "operationId": "atual_eleicoes_atual_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/eleicoes/{eleicao_id}": {
+      "get": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Consultar situação da eleição",
+        "operationId": "obter_eleicoes__eleicao_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Alterar eleição agendada (Chefe)",
+        "operationId": "atualizar_eleicoes__eleicao_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EleicaoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/{eleicao_id}/abrir": {
+      "post": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Abrir votação (Chefe)",
+        "description": "AGENDADA → ABERTA. Exige ao menos um candidato cadastrado.",
+        "operationId": "abrir_eleicoes__eleicao_id__abrir_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/{eleicao_id}/encerrar": {
+      "post": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Encerrar votação (Chefe)",
+        "description": "ABERTA → ENCERRADA. Depois disso nenhum voto novo é aceito.",
+        "operationId": "encerrar_eleicoes__eleicao_id__encerrar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleitores": {
+      "post": {
+        "tags": [
+          "Eleitores (Chefe)"
+        ],
+        "summary": "Cadastrar eleitor",
+        "operationId": "criar_eleitores_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EleitorIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleitorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Eleitores (Chefe)"
+        ],
+        "summary": "Consultar eleitores",
+        "operationId": "listar_eleitores_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "busca",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra por nome",
+              "title": "Busca"
+            },
+            "description": "Filtra por nome"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EleitorOut"
+                  },
+                  "title": "Response Listar Eleitores Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleitores/{eleitor_id}": {
+      "get": {
+        "tags": [
+          "Eleitores (Chefe)"
+        ],
+        "summary": "Consultar um eleitor",
+        "operationId": "obter_eleitores__eleitor_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleitor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleitor Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleitorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Eleitores (Chefe)"
+        ],
+        "summary": "Alterar dados do eleitor",
+        "operationId": "atualizar_eleitores__eleitor_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleitor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleitor Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EleitorUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleitorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Eleitores (Chefe)"
+        ],
+        "summary": "Excluir eleitor",
+        "operationId": "excluir_eleitores__eleitor_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleitor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleitor Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/candidatos": {
+      "post": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Cadastrar candidato (Chefe)",
+        "description": "Cria o usuário (perfil CANDIDATO) e o associa a um cargo e a uma eleição AGENDADA.",
+        "operationId": "criar_candidatos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidatoIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Consultar candidatos",
+        "operationId": "listar_candidatos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Eleicao Id"
+            }
+          },
+          {
+            "name": "cargo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Cargo"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cargo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CandidatoOut"
+                  },
+                  "title": "Response Listar Candidatos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/candidatos/{candidato_id}": {
+      "get": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Consultar um candidato",
+        "operationId": "obter_candidatos__candidato_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "candidato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Candidato Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Alterar candidato (Chefe)",
+        "operationId": "atualizar_candidatos__candidato_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "candidato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Candidato Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidatoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Excluir candidato (Chefe)",
+        "operationId": "excluir_candidatos__candidato_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "candidato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Candidato Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/{eleicao_id}/cargos": {
+      "get": {
+        "tags": [
+          "Votação (Eleitor)"
+        ],
+        "summary": "Candidatos disponíveis por cargo",
+        "description": "Lista, para cada cargo, os candidatos e se o eleitor logado já votou naquele cargo.",
+        "operationId": "cargos_eleicoes__eleicao_id__cargos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CargoCandidatosOut"
+                  },
+                  "title": "Response Cargos Eleicoes  Eleicao Id  Cargos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/{eleicao_id}/meus-votos": {
+      "get": {
+        "tags": [
+          "Votação (Eleitor)"
+        ],
+        "summary": "Em quais cargos já votei",
+        "description": "Só informa os cargos já votados — o sistema não guarda nem revela em quem o eleitor votou.",
+        "operationId": "meus_votos_eleicoes__eleicao_id__meus_votos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeusVotosOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/{eleicao_id}/votos": {
+      "post": {
+        "tags": [
+          "Votação (Eleitor)"
+        ],
+        "summary": "Registrar e confirmar voto",
+        "description": "Regras: eleição ABERTA; apenas eleitor; um voto por cargo; `confirmado` deve ser true; voto confirmado não pode ser alterado.",
+        "operationId": "votar_eleicoes__eleicao_id__votos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VotoIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VotoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/{eleicao_id}/apuracao": {
+      "get": {
+        "tags": [
+          "Apuração e Resultado"
+        ],
+        "summary": "Acompanhar a votação (parcial)",
+        "description": "Votos por candidato, atualizados a cada voto. Eleitor e Chefe veem todos os cargos; Candidato só o seu. Indisponível enquanto AGENDADA.",
+        "operationId": "apuracao_eleicoes__eleicao_id__apuracao_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApuracaoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/eleicoes/{eleicao_id}/resultado": {
+      "get": {
+        "tags": [
+          "Apuração e Resultado"
+        ],
+        "summary": "Resultado final",
+        "description": "Disponível só após o encerramento. Traz votos por candidato e o mais votado de cada cargo (Candidato vê apenas o seu cargo).",
+        "operationId": "resultado_eleicoes__eleicao_id__resultado_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Eleicao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/saude": {
+      "get": {
+        "tags": [
+          "Infra"
+        ],
+        "summary": "Verifica se a API está no ar",
+        "operationId": "saude_saude_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApuracaoOut": {
+        "properties": {
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id"
+          },
+          "situacao": {
+            "$ref": "#/components/schemas/Situacao"
+          },
+          "cargos": {
+            "items": {
+              "$ref": "#/components/schemas/CargoApuracaoOut"
+            },
+            "type": "array",
+            "title": "Cargos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleicao_id",
+          "situacao",
+          "cargos"
+        ],
+        "title": "ApuracaoOut"
+      },
+      "CandidatoIn": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Nome"
+          },
+          "login": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "title": "Login"
+          },
+          "senha": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 4,
+            "title": "Senha"
+          },
+          "numero": {
+            "type": "integer",
+            "maximum": 99999.0,
+            "minimum": 1.0,
+            "title": "Numero",
+            "description": "Número de identificação eleitoral"
+          },
+          "partido": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Partido"
+          },
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo"
+          },
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "login",
+          "senha",
+          "numero",
+          "partido",
+          "cargo",
+          "eleicao_id"
+        ],
+        "title": "CandidatoIn"
+      },
+      "CandidatoOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "title": "Usuario Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "numero": {
+            "type": "integer",
+            "title": "Numero"
+          },
+          "partido": {
+            "type": "string",
+            "title": "Partido"
+          },
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo"
+          },
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "usuario_id",
+          "nome",
+          "numero",
+          "partido",
+          "cargo",
+          "eleicao_id"
+        ],
+        "title": "CandidatoOut"
+      },
+      "CandidatoUpdate": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Login"
+          },
+          "senha": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 4
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Senha"
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 99999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero"
+          },
+          "partido": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partido"
+          },
+          "cargo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cargo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "CandidatoUpdate"
+      },
+      "CandidatoVotosOut": {
+        "properties": {
+          "candidato_id": {
+            "type": "integer",
+            "title": "Candidato Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "numero": {
+            "type": "integer",
+            "title": "Numero"
+          },
+          "partido": {
+            "type": "string",
+            "title": "Partido"
+          },
+          "votos": {
+            "type": "integer",
+            "title": "Votos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidato_id",
+          "nome",
+          "numero",
+          "partido",
+          "votos"
+        ],
+        "title": "CandidatoVotosOut"
+      },
+      "Cargo": {
+        "type": "string",
+        "enum": [
+          "DEPUTADO_ESTADUAL",
+          "DEPUTADO_FEDERAL",
+          "SENADOR",
+          "GOVERNADOR",
+          "PRESIDENTE"
+        ],
+        "title": "Cargo"
+      },
+      "CargoApuracaoOut": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "total_votos": {
+            "type": "integer",
+            "title": "Total Votos"
+          },
+          "candidatos": {
+            "items": {
+              "$ref": "#/components/schemas/CandidatoVotosOut"
+            },
+            "type": "array",
+            "title": "Candidatos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargo",
+          "rotulo",
+          "total_votos",
+          "candidatos"
+        ],
+        "title": "CargoApuracaoOut"
+      },
+      "CargoCandidatosOut": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "ja_votou": {
+            "type": "boolean",
+            "title": "Ja Votou"
+          },
+          "candidatos": {
+            "items": {
+              "$ref": "#/components/schemas/CandidatoOut"
+            },
+            "type": "array",
+            "title": "Candidatos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargo",
+          "rotulo",
+          "ja_votou",
+          "candidatos"
+        ],
+        "title": "CargoCandidatosOut"
+      },
+      "CargoResultadoOut": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "total_votos": {
+            "type": "integer",
+            "title": "Total Votos"
+          },
+          "candidatos": {
+            "items": {
+              "$ref": "#/components/schemas/CandidatoVotosOut"
+            },
+            "type": "array",
+            "title": "Candidatos"
+          },
+          "vencedor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidatoVotosOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Candidato mais votado (null se não houve votos ou houve empate)"
+          },
+          "empate": {
+            "type": "boolean",
+            "title": "Empate",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargo",
+          "rotulo",
+          "total_votos",
+          "candidatos",
+          "vencedor"
+        ],
+        "title": "CargoResultadoOut"
+      },
+      "EleicaoIn": {
+        "properties": {
+          "titulo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo",
+            "examples": [
+              "Eleição Geral 2026"
+            ]
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          },
+          "turno": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 1.0,
+            "title": "Turno",
+            "description": "1º ou 2º turno"
+          },
+          "hora_abertura": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Abertura"
+          },
+          "hora_encerramento": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Encerramento"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "turno",
+          "hora_abertura",
+          "hora_encerramento"
+        ],
+        "title": "EleicaoIn"
+      },
+      "EleicaoOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "titulo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo"
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data"
+          },
+          "turno": {
+            "type": "integer",
+            "title": "Turno"
+          },
+          "hora_abertura": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Abertura"
+          },
+          "hora_encerramento": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Encerramento"
+          },
+          "situacao": {
+            "$ref": "#/components/schemas/Situacao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "titulo",
+          "data",
+          "turno",
+          "hora_abertura",
+          "hora_encerramento",
+          "situacao"
+        ],
+        "title": "EleicaoOut"
+      },
+      "EleicaoUpdate": {
+        "properties": {
+          "titulo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "turno": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turno"
+          },
+          "hora_abertura": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hora Abertura"
+          },
+          "hora_encerramento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hora Encerramento"
+          }
+        },
+        "type": "object",
+        "title": "EleicaoUpdate"
+      },
+      "EleitorIn": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Nome"
+          },
+          "login": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 3,
+            "title": "Login"
+          },
+          "senha": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 4,
+            "title": "Senha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "login",
+          "senha"
+        ],
+        "title": "EleitorIn"
+      },
+      "EleitorOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "login": {
+            "type": "string",
+            "title": "Login"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "login"
+        ],
+        "title": "EleitorOut"
+      },
+      "EleitorUpdate": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Login"
+          },
+          "senha": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 4
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Senha"
+          }
+        },
+        "type": "object",
+        "title": "EleitorUpdate"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginIn": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Login",
+            "examples": [
+              "admin"
+            ]
+          },
+          "senha": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Senha",
+            "examples": [
+              "admin123"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "login",
+          "senha"
+        ],
+        "title": "LoginIn"
+      },
+      "MeusVotosOut": {
+        "properties": {
+          "cargos_votados": {
+            "items": {
+              "$ref": "#/components/schemas/Cargo"
+            },
+            "type": "array",
+            "title": "Cargos Votados"
+          },
+          "cargos_pendentes": {
+            "items": {
+              "$ref": "#/components/schemas/Cargo"
+            },
+            "type": "array",
+            "title": "Cargos Pendentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargos_votados",
+          "cargos_pendentes"
+        ],
+        "title": "MeusVotosOut",
+        "description": "Só informa EM QUAIS CARGOS o eleitor já votou — nunca em quem."
+      },
+      "Perfil": {
+        "type": "string",
+        "enum": [
+          "CHEFE",
+          "ELEITOR",
+          "CANDIDATO"
+        ],
+        "title": "Perfil"
+      },
+      "ResultadoOut": {
+        "properties": {
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id"
+          },
+          "situacao": {
+            "$ref": "#/components/schemas/Situacao"
+          },
+          "cargos": {
+            "items": {
+              "$ref": "#/components/schemas/CargoResultadoOut"
+            },
+            "type": "array",
+            "title": "Cargos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleicao_id",
+          "situacao",
+          "cargos"
+        ],
+        "title": "ResultadoOut"
+      },
+      "Situacao": {
+        "type": "string",
+        "enum": [
+          "AGENDADA",
+          "ABERTA",
+          "ENCERRADA"
+        ],
+        "title": "Situacao"
+      },
+      "TokenOut": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/Perfil"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/UsuarioOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "perfil",
+          "usuario"
+        ],
+        "title": "TokenOut"
+      },
+      "UsuarioOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/Perfil"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "perfil"
+        ],
+        "title": "UsuarioOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VotoIn": {
+        "properties": {
+          "candidato_id": {
+            "type": "integer",
+            "title": "Candidato Id"
+          },
+          "confirmado": {
+            "type": "boolean",
+            "title": "Confirmado",
+            "description": "Precisa ser true: é a confirmação do voto (irreversível)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidato_id",
+          "confirmado"
+        ],
+        "title": "VotoIn"
+      },
+      "VotoOut": {
+        "properties": {
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id"
+          },
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo"
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem",
+            "default": "Voto registrado com sucesso."
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleicao_id",
+          "cargo"
+        ],
+        "title": "VotoOut"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "Cole o access_token retornado por POST /auth/login",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "API rodando localmente (uvicorn)"
+    }
+  ]
+}
